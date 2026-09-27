@@ -2,7 +2,7 @@
 
 [中文](README.md) | [English](README-EN.md)
 
-A WeChat Channels resource plugin for `res-downloader` that detects videos and images and processes video files that require decryption.
+A WeChat Channels resource plugin for [res-downloader](https://github.com/putyy/res-downloader) that detects videos and images and processes video files that require decryption.
 
 ## Features
 

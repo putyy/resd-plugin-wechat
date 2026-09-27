@@ -2,7 +2,7 @@
 
 [中文](README.md) | [English](README-EN.md)
 
-`res-downloader` 的微信视频号资源插件，用于识别视频号视频和图片，并处理需要解密的视频文件。
+[res-downloader](https://github.com/putyy/res-downloader) 的微信视频号资源插件，用于识别视频号视频和图片，并处理需要解密的视频文件。
 
 ## 功能
 
