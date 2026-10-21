@@ -1,0 +1,27 @@
+{
+  "observation": {
+    "stage": "response",
+    "request": {
+      "method": "GET",
+      "url": "https://res.wx.qq.com/t/wx_fed/finder/web/web-finder/res/js/FinderHome.publish.example.js",
+      "host": "res.wx.qq.com",
+      "path": "/t/wx_fed/finder/web/web-finder/res/js/FinderHome.publish.example.js",
+      "headers": {}
+    },
+    "response": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": [
+          "application/javascript"
+        ]
+      },
+      "contentType": "application/javascript",
+      "body": "const definition=component({__name:\"VideoPlayer\",props:{feed:{},active:{type:Boolean}},setup(p,{emit:emit}){const chosen=computed(()=>{var x;const{feed:f}=p;return{url:f.videoUrl}}),native=ref(video),player=ref(instance);tracker.video(native.value,()=>({}));[\"loadstart\",\"loadedmetadata\",\"durationchange\",\"progress\",\"canplaythrough\",\"play\",\"playing\",\"timeupdate\",\"waiting\",\"pause\",\"seeking\",\"ratechange\",\"ended\"].forEach(event=>{var current;(current=player.value)==null||current.on(event,()=>{var extra;valid()&&(emit(event))})});return{player:player.value,native:native.value}}});"
+    }
+  },
+  "expected": {
+    "resourceCount": 0,
+    "patchBodyContains": "/* resd-wechat-playing:main */",
+    "decision": "continue"
+  }
+}

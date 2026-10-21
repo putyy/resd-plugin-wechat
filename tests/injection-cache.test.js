@@ -13,7 +13,7 @@ function observe(plugin, pluginVersion, url, body, enableLog) {
     stage: "response",
     settings: {enableLog},
     request: {url, host: address.hostname, path: address.pathname, headers: {}},
-    response: {statusCode: 200, body}
+    response: {statusCode: 200, body, contentType: address.hostname === "channels.weixin.qq.com" ? "text/html" : "application/javascript"}
   }, {pluginVersion, log() {}});
 }
 
@@ -33,7 +33,7 @@ test("page and dependency scripts share a cache key across releases and revision
     plugin.WECHAT_INJECTION_CACHE_REVISION = scenario.revision;
     const expectedKey = scenario.version + "-" + scenario.revision;
     cacheKeys.add(expectedKey);
-    for (const page of ["feed", "home"]) {
+    for (const page of ["feed", "home", "profile", "search", "live"]) {
       for (const enableLog of [false, true]) {
         const result = observe(plugin, scenario.version,
           "https://channels.weixin.qq.com/web/pages/" + page,

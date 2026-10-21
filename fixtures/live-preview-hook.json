@@ -1,0 +1,27 @@
+{
+  "observation": {
+    "stage": "response",
+    "request": {
+      "method": "GET",
+      "url": "https://res.wx.qq.com/t/wx_fed/finder/web/web-finder/res/js/LiveStatBox.publish.example.js",
+      "host": "res.wx.qq.com",
+      "path": "/t/wx_fed/finder/web/web-finder/res/js/LiveStatBox.publish.example.js",
+      "headers": {}
+    },
+    "response": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": [
+          "application/javascript"
+        ]
+      },
+      "contentType": "application/javascript",
+      "body": "function makePlayer(url,active,metadata,error,loaded,sei,size){const video=ref(native),player=ref(instance);video.value.addEventListener(\"playing\",()=>{});player.value.load();return{videoRef:video,isPlaying:ref(false)}}const definition=component({emits:[\"preview-end\",\"error-or-end\"],setup(props,ctx){const url=computed(()=>props.obj.liveInfo.streamUrl),active=computed(()=>props.autoPlay),{videoRef:video,isPlaying:playing}=makePlayer(url,active,()=>{ctx.size(1)},()=>{},()=>{},()=>{},()=>{});return{video}}});"
+    }
+  },
+  "expected": {
+    "resourceCount": 0,
+    "patchBodyContains": "/* resd-wechat-stream:live-preview */",
+    "decision": "continue"
+  }
+}

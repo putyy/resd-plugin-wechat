@@ -1,0 +1,27 @@
+{
+  "observation": {
+    "stage": "response",
+    "request": {
+      "method": "GET",
+      "url": "https://res.wx.qq.com/t/wx_fed/finder/web/web-finder/res/js/useViewportProbe.publish.example.js",
+      "host": "res.wx.qq.com",
+      "path": "/t/wx_fed/finder/web/web-finder/res/js/useViewportProbe.publish.example.js",
+      "headers": {}
+    },
+    "response": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": [
+          "application/javascript"
+        ]
+      },
+      "contentType": "application/javascript",
+      "body": "import{by as getRoom}from\"./virtual_svg-icons-register.publish.example.js\";const definition=component({name:\"FlvCorePlayer\",props:{stream:{}},setup(props,{emit:emit}){const room=getRoom(),video=ref(native),player=ref(instance);video.value.addEventListener(\"playing\",()=>emit(\"playing\"));player.value.load();return{room}}});"
+    }
+  },
+  "expected": {
+    "resourceCount": 0,
+    "patchBodyContains": "/* resd-wechat-stream:live */",
+    "decision": "continue"
+  }
+}

@@ -10,12 +10,16 @@
     },
     "response": {
       "statusCode": 200,
-      "headers": {"Content-Type": ["video/mp4"]},
+      "headers": {
+        "Content-Type": [
+          "video/mp4"
+        ]
+      },
       "contentType": "video/mp4"
     }
   },
   "expected": {
     "resourceCount": 0,
-    "decision": "stop"
+    "decision": "continue"
   }
 }

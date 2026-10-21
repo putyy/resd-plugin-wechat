@@ -1,0 +1,156 @@
+{
+  "context": {
+    "pageSessionId": "sample-page",
+    "scriptId": "wechat-bridge",
+    "origin": "https://channels.weixin.qq.com",
+    "pageUrl": "https://channels.weixin.qq.com/web/pages/home"
+  },
+  "steps": [
+    {
+      "observation": {
+        "stage": "response",
+        "request": {
+          "method": "GET",
+          "url": "https://pull-m1.wxlivecdn.com:443/trtc_12345/orig_111222_nh420.flv?cdntagname=nh420&q=3",
+          "host": "pull-m1.wxlivecdn.com:443",
+          "path": "/trtc_12345/orig_111222_nh420.flv",
+          "headers": {
+            "Origin": [
+              "https://channels.weixin.qq.com"
+            ],
+            "Referer": [
+              "https://channels.weixin.qq.com/web/pages/home"
+            ]
+          }
+        },
+        "response": {
+          "statusCode": 200,
+          "contentType": "video/x-flv",
+          "headers": {
+            "Content-Type": [
+              "video/x-flv"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "message": {
+        "event": "live-ready",
+        "roomId": "sample-room",
+        "liveId": "111222",
+        "playbackUrl": "https://pull-m1.wxlivecdn.com:443/trtc_12345/orig_111222_nh420.flv?cdntagname=nh420&q=3",
+        "pageUrl": "https://channels.weixin.qq.com/web/pages/home",
+        "title": "Example live room",
+        "author": "Example anchor",
+        "coverUrl": "https://res.wx.qq.com/example-cover.jpg",
+        "loadId": "sample-home",
+        "active": true
+      }
+    },
+    {
+      "observation": {
+        "stage": "response",
+        "request": {
+          "method": "GET",
+          "url": "https://pull-m1.wxlivecdn.com:443/trtc_12345/orig_111222_nh420.flv?cdntagname=nh420&q=3",
+          "host": "pull-m1.wxlivecdn.com:443",
+          "path": "/trtc_12345/orig_111222_nh420.flv",
+          "headers": {
+            "Origin": [
+              "https://channels.weixin.qq.com"
+            ],
+            "Referer": [
+              "https://channels.weixin.qq.com/web/pages/home"
+            ]
+          }
+        },
+        "response": {
+          "statusCode": 200,
+          "contentType": "video/x-flv",
+          "headers": {
+            "Content-Type": [
+              "video/x-flv"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "message": {
+        "event": "live-stream",
+        "roomId": "sample-room",
+        "liveId": "111222",
+        "playbackUrl": "https://pull-m1.wxlivecdn.com:443/trtc_12345/orig_111222_nh420.flv?cdntagname=nh420&q=3",
+        "pageUrl": "https://channels.weixin.qq.com/web/pages/home",
+        "title": "Example live room",
+        "author": "Example anchor",
+        "coverUrl": "https://res.wx.qq.com/example-cover.jpg",
+        "loadId": "sample-home",
+        "active": true
+      }
+    },
+    {
+      "message": {
+        "event": "live-ready",
+        "roomId": "sample-room",
+        "liveId": "111222",
+        "playbackUrl": "https://pull-m1.wxlivecdn.com/trtc_12345/orig_111222_jf521.flv?cdntagname=jf521&q=4",
+        "pageUrl": "https://channels.weixin.qq.com/web/pages/live",
+        "title": "Example live room",
+        "author": "Example anchor",
+        "coverUrl": "https://res.wx.qq.com/example-cover.jpg",
+        "loadId": "sample-detail",
+        "active": true
+      }
+    },
+    {
+      "observation": {
+        "stage": "response",
+        "request": {
+          "method": "GET",
+          "url": "https://pull-m1.wxlivecdn.com/trtc_12345/orig_111222_jf521.flv?cdntagname=jf521&q=4",
+          "host": "pull-m1.wxlivecdn.com",
+          "path": "/trtc_12345/orig_111222_jf521.flv",
+          "headers": {
+            "Origin": [
+              "https://channels.weixin.qq.com"
+            ],
+            "Referer": [
+              "https://channels.weixin.qq.com/web/pages/home"
+            ]
+          }
+        },
+        "response": {
+          "statusCode": 200,
+          "contentType": "video/x-flv",
+          "headers": {
+            "Content-Type": [
+              "video/x-flv"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "message": {
+        "event": "live-stream",
+        "roomId": "sample-room",
+        "liveId": "111222",
+        "playbackUrl": "https://pull-m1.wxlivecdn.com/trtc_12345/orig_111222_jf521.flv?cdntagname=jf521&q=4",
+        "pageUrl": "https://channels.weixin.qq.com/web/pages/live",
+        "title": "Example live room",
+        "author": "Example anchor",
+        "coverUrl": "https://res.wx.qq.com/example-cover.jpg",
+        "loadId": "sample-detail",
+        "active": true
+      }
+    }
+  ],
+  "expected": {
+    "resourceCount": 1,
+    "resourceUrls": [
+      "https://pull-m1.wxlivecdn.com/trtc_12345/orig_111222_jf521.flv?cdntagname=jf521&q=4"
+    ]
+  }
+}

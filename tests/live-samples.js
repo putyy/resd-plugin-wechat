@@ -1,0 +1,4 @@
+module.exports = {
+  "live": "import{by as getRoom}from\"./virtual_svg-icons-register.publish.example.js\";const definition=component({name:\"FlvCorePlayer\",props:{stream:{}},setup(props,{emit:emit}){const room=getRoom(),video=ref(native),player=ref(instance);video.value.addEventListener(\"playing\",()=>emit(\"playing\"));player.value.load();return{room}}});",
+  "live-preview": "function makePlayer(url,active,metadata,error,loaded,sei,size){const video=ref(native),player=ref(instance);video.value.addEventListener(\"playing\",()=>{});player.value.load();return{videoRef:video,isPlaying:ref(false)}}const definition=component({emits:[\"preview-end\",\"error-or-end\"],setup(props,ctx){const url=computed(()=>props.obj.liveInfo.streamUrl),active=computed(()=>props.autoPlay),{videoRef:video,isPlaying:playing}=makePlayer(url,active,()=>{ctx.size(1)},()=>{},()=>{},()=>{},()=>{});return{video}}});"
+};

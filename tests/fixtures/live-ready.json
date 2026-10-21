@@ -1,0 +1,27 @@
+{
+  "context": {
+    "pageSessionId": "sample-page",
+    "scriptId": "wechat-bridge",
+    "origin": "https://channels.weixin.qq.com",
+    "pageUrl": "https://channels.weixin.qq.com/web/pages/live"
+  },
+  "steps": [
+    {
+      "message": {
+        "event": "live-ready",
+        "roomId": "sample-room",
+        "liveId": "sample-session",
+        "playbackUrl": "https://voipfinderliveplaythird.wxqcloud.qq.com/trtc_example/sample.flv?variant=example",
+        "pageUrl": "https://channels.weixin.qq.com/web/pages/live",
+        "title": "Example live room",
+        "author": "Example anchor",
+        "coverUrl": "https://res.wx.qq.com/example-cover.jpg",
+        "loadId": "sample-load",
+        "active": true
+      }
+    }
+  ],
+  "expected": {
+    "resourceCount": 0
+  }
+}

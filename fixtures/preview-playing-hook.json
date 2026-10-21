@@ -1,0 +1,27 @@
+{
+  "observation": {
+    "stage": "response",
+    "request": {
+      "method": "GET",
+      "url": "https://res.wx.qq.com/t/wx_fed/finder/web/web-finder/res/js/AuthorObjectCard.vue_vue_type_style_index_1_lang.publish.example.js",
+      "host": "res.wx.qq.com",
+      "path": "/t/wx_fed/finder/web/web-finder/res/js/AuthorObjectCard.vue_vue_type_style_index_1_lang.publish.example.js",
+      "headers": {}
+    },
+    "response": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": [
+          "application/javascript"
+        ]
+      },
+      "contentType": "application/javascript",
+      "body": "const definition=component({__name:\"Preview\",props:{feed:{},disablePlay:{type:Boolean}},setup(p,{emit:emit}){const visible=computed(()=>p.active),selected=computed(()=>p.feed.videoUrl);const play=()=>{},pause=()=>{},seek=()=>{},loaded=()=>{},error=()=>{};return(ctx,cache)=>visible.value?wrapper((open(),create(PreviewVideo,{key:0,src:selected.value,url:selected.value,seed:\"\",onPlay:play,onPause:pause,onSeeking:seek,onLoadeddata:loaded,onNetworkError:error},null,8,[\"src\",\"url\",\"seed\",\"duration\",\"keepalive\",\"feed-id\",\"class\",\"ml-extends\",\"style\"]))):null}});"
+    }
+  },
+  "expected": {
+    "resourceCount": 0,
+    "patchBodyContains": "/* resd-wechat-playing:preview */",
+    "decision": "continue"
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "context": {
+    "pageSessionId": "sample-page",
+    "scriptId": "wechat-bridge",
+    "origin": "https://channels.weixin.qq.com",
+    "pageUrl": "https://channels.weixin.qq.com/web/pages/home"
+  },
+  "steps": [
+    {
+      "message": {
+        "event": "live-ready",
+        "roomId": "sample-room",
+        "liveId": "sample-session",
+        "playbackUrl": "https://pull-m1.wxlivecdn.com:443/trtc_example/orig_sample_nh420.flv?cdntagname=nh420&q=3&sc=500&combuf=example%2Bvalue",
+        "pageUrl": "https://channels.weixin.qq.com/web/pages/home",
+        "title": "Example live room",
+        "author": "Example anchor",
+        "coverUrl": "https://res.wx.qq.com/example-cover.jpg",
+        "loadId": "sample-load",
+        "active": true
+      }
+    },
+    {
+      "observation": {
+        "stage": "response",
+        "request": {
+          "method": "GET",
+          "url": "https://pull-m1.wxlivecdn.com:443/trtc_example/orig_sample_nh420.flv?cdntagname=nh420&q=3&sc=500&combuf=example%2Bvalue",
+          "host": "pull-m1.wxlivecdn.com:443",
+          "path": "/trtc_example/orig_sample_nh420.flv",
+          "headers": {
+            "Range": [
+              "bytes=100-"
+            ],
+            "Origin": [
+              "https://channels.weixin.qq.com"
+            ],
+            "Referer": [
+              "https://channels.weixin.qq.com/web/pages/home"
+            ]
+          }
+        },
+        "response": {
+          "statusCode": 206,
+          "headers": {
+            "Content-Type": [
+              "video/x-flv"
+            ]
+          },
+          "contentType": "video/x-flv"
+        }
+      }
+    },
+    {
+      "message": {
+        "event": "live-stream",
+        "roomId": "sample-room",
+        "liveId": "sample-session",
+        "playbackUrl": "https://pull-m1.wxlivecdn.com:443/trtc_example/orig_sample_nh420.flv?cdntagname=nh420&q=3&sc=500&combuf=example%2Bvalue",
+        "pageUrl": "https://channels.weixin.qq.com/web/pages/home",
+        "title": "Example live room",
+        "author": "Example anchor",
+        "coverUrl": "https://res.wx.qq.com/example-cover.jpg",
+        "loadId": "sample-load",
+        "active": true
+      }
+    }
+  ],
+  "expected": {
+    "resourceCount": 1,
+    "resourceUrls": [
+      "https://pull-m1.wxlivecdn.com:443/trtc_example/orig_sample_nh420.flv?cdntagname=nh420&q=3&sc=500&combuf=example%2Bvalue"
+    ]
+  }
+}
