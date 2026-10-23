@@ -1,0 +1,17 @@
+{
+  "observation": {
+    "stage": "request",
+    "request": {
+      "method": "GET",
+      "url": "https://channels.weixin.qq.com:443/res-downloader/wechat?type=probe",
+      "host": "channels.weixin.qq.com:443",
+      "path": "/res-downloader/wechat",
+      "headers": {},
+      "body": ""
+    }
+  },
+  "expected": {
+    "resourceCount": 0,
+    "decision": "stop"
+  }
+}

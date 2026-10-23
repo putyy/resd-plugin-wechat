@@ -1,0 +1,30 @@
+{
+  "observation": {
+    "stage": "request",
+    "request": {
+      "method": "POST",
+      "url": "https://channels.weixin.qq.com/res-downloader/wechat",
+      "host": "channels.weixin.qq.com",
+      "path": "/res-downloader/wechat",
+      "headers": {
+        "Content-Type": [
+          "application/json"
+        ],
+        "Origin": [
+          "https://channels.weixin.qq.com"
+        ]
+      },
+      "body": "{\"event\":\"playing\",\"feedId\":\"sample-video\",\"playbackUrl\":\"https://finder.video.qq.com/example.mp4?token=example&X-snsvideoflag=hd\",\"pageUrl\":\"https://channels.weixin.qq.com/web/pages/feed\",\"createtime\":1774790002,\"objectDesc\":{\"description\":\"Example playing video\",\"media\":[{\"mediaType\":4,\"url\":\"https://finder.video.qq.com/example.mp4\",\"decodeKey\":\"2136343393\",\"fileSize\":1234,\"spec\":[{\"fileFormat\":\"sd\"},{\"fileFormat\":\"hd\"}]}]}}"
+    }
+  },
+  "expected": {
+    "resourceCount": 1,
+    "resourceUrls": [
+      "https://finder.video.qq.com/example.mp4?token=example&X-snsvideoflag=hd"
+    ],
+    "processorTypes": [
+      "plugin-wasm"
+    ],
+    "decision": "stop"
+  }
+}

@@ -8,7 +8,7 @@ const samples = require("./component-samples");
 const source = fs.readFileSync(path.join(__dirname, "../main.js"), "utf8");
 const plugin = vm.createContext({});
 vm.runInContext(source, plugin);
-const api = {pluginVersion: "1.0.3", log() {}};
+const api = {pluginVersion: "1.0.4", log() {}};
 
 function feed(id = "example-one") {
   const media = {url: "https://finder.video.qq.com/example.mp4", decodeKey: "2136343393", spec: [{fileFormat: "hd"}]};
@@ -23,7 +23,7 @@ function page(target, options = {}) {
   const video = {isConnected: true, paused: true, ended: false};
   const instance = {on(type, handler) { handlers.set(type, handler); }, tech_: {el: () => video}};
   const sandbox = {Map, location: {href: "https://channels.weixin.qq.com/web/pages/feed"},
-    __resdWechatBridge: {send(payload) { requests.push({body: JSON.stringify(payload)}); return Promise.resolve({ok: true}); }},
+    __resdWechatSender: {send(payload) { requests.push({body: JSON.stringify(payload)}); return Promise.resolve({ok: true}); }},
     component: (value) => value,
     computed: (get) => ({get value() { return get(); }}),
     ref: (value) => ({value: options.nativeRef === false && value === video ? null : value}), video, instance,

@@ -38,7 +38,7 @@
 
 ## 注意事项
 
-- 页面初始化时探测一次 res-downloader；探测失败时本页不上报，网页播放不受影响。修改插件或宿主后刷新页面。
+- 播放器脚本加载时探测一次 res-downloader；探测失败时本页不上报，网页播放不受影响。抓取期间保持代理开启。更新插件后重新打开视频号，若仍使用旧脚本需清理微信浏览器缓存。
 - 首页自动播放和鼠标悬停后真正播放的预览视频也会被捕获；图文作品不触发视频捕获。
 - 直播录制需要在应用设置中配置 FFmpeg；结束时使用“停止并保存”。直播链接过期后需重新播放并抓取。
 - 首页预览和详情中的同一直播合并为一条资源，取得直播信息后显示。
@@ -56,13 +56,13 @@ node --test ./plugins/resd-plugin-wechat/tests/creation-time.test.js
 node --test ./plugins/resd-plugin-wechat/tests/injection-cache.test.js
 node --test ./plugins/resd-plugin-wechat/tests/playback.test.js
 node --test ./plugins/resd-plugin-wechat/tests/live.test.js
-node --test ./plugins/resd-plugin-wechat/tests/bridge.test.js
+node --test ./plugins/resd-plugin-wechat/tests/request.test.js
 go run main.go plugin pack ./plugins/resd-plugin-wechat
 ```
 
 脱敏 fixture 和测试覆盖视频捕获、直播关联、页面注入、资源去重及无效数据处理。
 
-开发说明：`fixtures/` 用于响应钩子的 CLI 回放；`tests/fixtures/` 用于消息桥契约测试，由 `tests/bridge.test.js` 和 `tests/live.test.js` 覆盖。
+开发说明：`fixtures/` 用于请求、响应钩子的 CLI 回放；`tests/fixtures/` 用于资源报告契约测试，由 `tests/request.test.js` 和 `tests/live.test.js` 覆盖。
 
 ## License
 

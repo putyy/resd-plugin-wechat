@@ -19,7 +19,7 @@
       "description": "Captures WeChat Channels resources and processes encrypted media with plugin-bundled WASM."
     }
   },
-  "version": "1.0.3",
+  "version": "1.0.4",
   "apiVersion": 1,
   "runtime": "javascript",
   "entry": "main.js",
@@ -27,11 +27,12 @@
   "permissions": {
     "domains": ["*.qq.com", "*.weixin.qq.com", "pull-m1.wxlivecdn.com"],
     "capabilities": [
+      "observe-request",
+      "read-request-body",
+      "intercept-request",
       "observe-response",
       "read-response-body",
       "modify-response",
-      "inject-page-script",
-      "page-bridge",
       "emit-resource",
       "process-download",
       "media.ffmpeg.network"
@@ -39,6 +40,19 @@
     "bodyLimit": 16777216
   },
   "match": [
+    {
+      "stage": "request",
+      "host": "channels.weixin.qq.com",
+      "path": "/res-downloader/wechat",
+      "method": "POST",
+      "readBody": true
+    },
+    {
+      "stage": "request",
+      "host": "channels.weixin.qq.com",
+      "path": "/res-downloader/wechat",
+      "readBody": false
+    },
     {
       "stage": "response",
       "host": "*.qq.com",
@@ -95,14 +109,6 @@
       "readBody": false
     }
   ],
-  "pageScripts": [{
-    "id": "wechat-bridge",
-    "entry": "page/bridge.js",
-    "match": [{"host": "channels.weixin.qq.com", "path": "/web/pages/*"}],
-    "runAt": "document-start",
-    "frames": "top",
-    "bridge": true
-  }],
   "resourceKinds": [
     {
       "id": "media.video",
@@ -157,11 +163,11 @@
         "x-locales": {
           "zh": {
             "name": "启用日志",
-            "description": "记录播放器注入结果及数据校验失败原因，默认关闭。"
+            "description": "记录播放器注入、探测和数据校验结果，默认关闭。"
           },
           "en": {
             "name": "Enable logging",
-            "description": "Log player injection results and data validation failures. Disabled by default."
+            "description": "Log player injection, probe and data validation results. Disabled by default."
           }
         }
       },

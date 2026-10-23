@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
+const {report} = require("./request-helper");
 const samples = require("./live-samples");
 const plugin = vm.createContext({});
 vm.runInContext(fs.readFileSync(path.join(__dirname, "../main.js"), "utf8"), plugin);
@@ -11,7 +12,7 @@ const payload = fixture.steps[0].message;
 
 function api() {
   const refs = new Map();
-  return {pluginVersion: "1.0.3", log() {}, correlate: {
+  return {pluginVersion: "1.0.4", log() {}, correlate: {
     register(value) {
       for (const alias of value.aliases) {
         const entries = refs.get(alias) || [];
@@ -25,7 +26,7 @@ function api() {
   }};
 }
 function bridge(type, value, hostAPI) {
-  const result = plugin.onPageMessage({...value, event: type}, fixture.context, hostAPI);
+  const result = report(plugin, {...value, event: type}, hostAPI);
   return {...result, resources: result.resources || []};
 }
 function media(url, hostAPI, contentType = "video/x-flv", statusCode = 206,
@@ -79,7 +80,7 @@ test("preloads, invalid responses and earlier loads do not create a live resourc
   assert.equal(bridge("live-playing", payload, hostAPI).resources.length, 0);
 });
 
-test("invalid bridge data keeps generic fallback", () => {
+test("invalid report data keeps generic fallback", () => {
   const hostAPI = api();
   for (const value of [{...payload, roomId: ""}, {...payload, loadId: ""}, {...payload, active: "true"},
     {...payload, playbackUrl: "https://example.com/sample.flv"},
@@ -87,7 +88,8 @@ test("invalid bridge data keeps generic fallback", () => {
     {...payload, pageUrl: "https://example.com/live"}]) {
     assert.equal(bridge("live-ready", value, hostAPI).ok, false);
   }
-  assert.equal(plugin.onPageMessage(payload, {...fixture.context, origin: "https://example.com"}, hostAPI).ok, false);
+  assert.equal(report(plugin, payload, hostAPI, {headers: {Origin: ["https://example.com"],
+    "Content-Type": ["application/json"]}}).ok, false);
   assert.equal(media(payload.playbackUrl, hostAPI).handled, false);
 });
 
@@ -159,22 +161,24 @@ function page({pending = false, failed = false, lostAck = false, active = true, 
   const video = {isConnected: true, paused: true};
   const player = {load() { order.push("load"); if (autoResponse) media(stream.url, hostAPI); },
     play() { order.push("play"); return "site-play-result"; }, destroy() { order.push("destroy"); }};
-  const context = {Map, Promise, Object, AbortController, location: {href: payload.pageUrl},
+  const context = {Map, Promise, Object, AbortController, TextEncoder, location: {href: payload.pageUrl},
     setTimeout(fn, ms) { const id = ++timerID; timers.set(id, {fn, ms}); return id; }, clearTimeout(id) { timers.delete(id); },
-    pageApi: {probe: () => Promise.resolve(true), send(value) {
+    fetch(address, options) {
+      if (options.method === "GET") return Promise.resolve({ok: true,
+        json: () => Promise.resolve({ok: true, plugin: "official.wechat"})});
+      const value = JSON.parse(options.body);
       const type = value.event;
       requests.push(value);
       if (failed && type === "live-ready") return Promise.reject(new Error("bridge unavailable"));
       return gate.then(() => {
-        const result = plugin.onPageMessage(value, {scriptId: "wechat-bridge", origin: "https://channels.weixin.qq.com",
-          pageUrl: payload.pageUrl}, hostAPI);
+        const result = report(plugin, value, hostAPI);
         resources.push(...(result.resources || [])); order.push(type);
         if (lostAck && type === "live-ready") throw new Error("ready response lost");
-        return result;
+        return {ok: true, json: () => Promise.resolve(result)};
       });
-    }}};
+    }};
   context.window = context;
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../page/bridge.js"), "utf8"), context);
+  vm.runInNewContext("(" + plugin.installWechatSender.toString() + ")()", context);
   vm.runInNewContext("(" + plugin.wechatLivePageBridge.toString() + ")()", context);
   context.__resdWechatLive.bind(player, () => room, () => stream, () => video);
   function tick() { for (const [id, t] of [...timers]) { timers.delete(id); t.fn(); } }
@@ -220,7 +224,7 @@ test("failed registration or lost acknowledgments stop reporting without blockin
 });
 
 test("timeouts resume loading; destruction and room changes stop deferred resolution", async () => {
-  const p = page({pending: true}); p.player.load(); p.tick(); await settle();
+  const p = page({pending: true}); p.player.load(); await settle(); p.tick(); await settle();
   assert.ok(p.order.includes("load")); p.player.destroy(); p.release(); await settle();
   assert.equal(p.resources.length, 0); assert.equal(p.timers.size, 0);
   const changed = page({autoResponse: false}); changed.player.load(); await settle();

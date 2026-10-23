@@ -1,10 +1,4 @@
 {
-  "context": {
-    "pageSessionId": "sample-page",
-    "scriptId": "wechat-bridge",
-    "origin": "https://channels.weixin.qq.com",
-    "pageUrl": "https://channels.weixin.qq.com/web/pages/home"
-  },
   "steps": [
     {
       "message": {

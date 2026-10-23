@@ -145,6 +145,65 @@ function isWechatPageRequest(request) {
     /^https:\/\/channels\.weixin\.qq\.com(?::443)?\//i.test(firstHeader(headers, "Referer"));
 }
 
+// Serialized into each patched player module. Every player in a document
+// shares one bodyless probe, independently of HTML injection or host sessions.
+function installWechatSender() {
+  if (window.__resdWechatSender || !/^https:\/\/channels\.weixin\.qq\.com(?::443)?\//i.test(location.href)) return;
+  var endpoint = "/res-downloader/wechat";
+  var nativeFetch = window.fetch && window.fetch.bind(window);
+  var enabled = !!nativeFetch, pending = 0;
+  function request(body, signal) {
+    var controller = typeof AbortController === "function" ? new AbortController() : null;
+    var options = {method: body === undefined ? "GET" : "POST", credentials: "omit", referrerPolicy: "no-referrer",
+      mode: "same-origin", cache: "no-store", redirect: "error", signal: controller ? controller.signal : signal};
+    if (body !== undefined) { options.headers = {"Content-Type": "application/json"}; options.body = body; }
+    var timer, abort;
+    var deadline = new Promise(function (resolve, reject) {
+      abort = function () { if (controller) controller.abort(); reject(new Error("wechat report cancelled")); };
+      timer = setTimeout(abort, body === undefined ? 1000 : 5000);
+      if (signal) {
+        if (signal.aborted) abort();
+        else signal.addEventListener("abort", abort, {once: true});
+      }
+    });
+    var response = Promise.resolve().then(function () {
+      if (signal && signal.aborted) throw new Error("wechat report cancelled");
+      return nativeFetch(endpoint + (body === undefined ? "?type=probe" : ""), options);
+    }).then(function (result) {
+      if (!result.ok || result.redirected) throw new Error("wechat report failed");
+      return result.json();
+    });
+    return Promise.race([response, deadline]).finally(function () {
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener("abort", abort);
+    });
+  }
+  var ready = nativeFetch ? request().then(function (result) {
+    return !!result && result.ok === true && result.plugin === "official.wechat";
+  }).catch(function () { return false; }) : Promise.resolve(false);
+  window.__resdWechatSender = Object.freeze({
+    send: function (message, signal) {
+      if (!enabled || pending >= 16 || (signal && signal.aborted)) return Promise.resolve({ok: false});
+      var body;
+      try {
+        body = JSON.stringify(message);
+        if (typeof body !== "string" || new TextEncoder().encode(body).length > 65536) return Promise.resolve({ok: false});
+      } catch (error) { return Promise.resolve({ok: false}); }
+      pending++;
+      return ready.then(function (available) {
+        if (!available || !enabled || (signal && signal.aborted)) return {ok: false};
+        return request(body, signal).then(function (result) {
+          if (!result || result.ok !== true) enabled = false;
+          return result || {ok: false};
+        });
+      }).catch(function () {
+        if (!signal || !signal.aborted) enabled = false;
+        return {ok: false};
+      }).finally(function () { pending--; });
+    }
+  });
+}
+
 function livePayload(payload, event, api) {
   if (!payload || Array.isArray(payload) || payload.event !== event ||
       typeof payload.roomId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(payload.roomId) ||
@@ -213,7 +272,7 @@ function wechatLivePageBridge() {
   }
   function send(value, type, signal) {
     return Promise.resolve().then(function () {
-      var bridge = window.__resdWechatBridge;
+      var bridge = window.__resdWechatSender;
       return bridge ? bridge.send(Object.assign({event: type}, value), signal) : {ok: false};
     }).then(function (result) {
       return {ok: result.ok === true, observed: !!(result.data && result.data.observed)};
@@ -336,7 +395,7 @@ function injectWechatLiveHooks(body, target, api) {
   }
   if (changed === body) { api.log("wechat: " + target + " stream hook did not match"); return body; }
   api.log("wechat: " + target + " stream hook installed");
-  return marker + "\n(" + wechatLivePageBridge.toString() + ")();\n" + changed;
+  return marker + "\n(" + installWechatSender.toString() + ")();\n(" + wechatLivePageBridge.toString() + ")();\n" + changed;
 }
 
 // Serialized into the site's modules; this function is never run in the host VM.
@@ -375,7 +434,7 @@ function wechatPlaybackPageBridge() {
       sent.delete(feedId);
       sent.set(feedId, body);
       while (sent.size > 256) sent.delete(sent.keys().next().value);
-      var bridge = window.__resdWechatBridge;
+      var bridge = window.__resdWechatSender;
       if (!bridge) { sent.delete(feedId); return; }
       bridge.send(payload).then(function (result) {
         if (!result.ok && sent.get(feedId) === body) sent.delete(feedId);
@@ -454,7 +513,7 @@ function injectWechatHooks(body, target, api) {
     return body;
   }
   api.log("wechat: " + target + " playing hook installed");
-  return marker + "\n(" + wechatPlaybackPageBridge.toString() + ")();\n" + body.slice(0, start) + changed + body.slice(end);
+  return marker + "\n(" + installWechatSender.toString() + ")();\n(" + wechatPlaybackPageBridge.toString() + ")();\n" + body.slice(0, start) + changed + body.slice(end);
 }
 
 function playbackReport(payload, pageUrl, api) {
@@ -476,31 +535,60 @@ function liveReport(payload, type, api) {
   return {ok: !!accepted, data: {observed: !!observed}, resources: observed ? [liveResource(live)] : []};
 }
 
-function onPageMessage(message, context, api) {
-  if (!context || context.scriptId !== "wechat-bridge" ||
-      !/^https:\/\/channels\.weixin\.qq\.com(?::443)?$/i.test(context.origin) ||
-      !message || typeof message !== "object" || Array.isArray(message)) return {ok: false};
+function handleWechatMessage(message, api) {
+  if (!message || typeof message !== "object" || Array.isArray(message) ||
+      !isHTTPURL(message.pageUrl) || !/^https:\/\/channels\.weixin\.qq\.com(?::443)?\//i.test(message.pageUrl)) return {ok: false};
   var body = JSON.stringify(message);
   if (body.length > 65536) return {ok: false};
   if (message.event === "live-ready" || message.event === "live-stream") return liveReport(message, message.event, api);
   if (message.event === "playing") {
-    var resources = playbackReport(message, context.pageUrl, api);
+    var resources = playbackReport(message, message.pageUrl, api);
+    if (resources.length) api.log("wechat: playback report accepted");
     return {ok: resources.length > 0, resources: resources};
   }
   return {ok: false};
+}
+
+function handleWechatRequest(request, api) {
+  function reply(status, result) {
+    return {decision: "stop", handled: true, resources: result.resources || [], syntheticResponse: {
+      statusCode: status, headers: {"Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff"},
+      body: JSON.stringify({ok: result.ok === true, plugin: "official.wechat", data: result.data})
+    }};
+  }
+  var origin = firstHeader(request.headers || {}, "Origin");
+  if (origin && !/^https:\/\/channels\.weixin\.qq\.com(?::443)?$/i.test(origin)) return reply(403, {ok: false});
+  if (request.method === "GET" && queryValue(request.url, "type") === "probe") {
+    api.log("wechat: sender probe accepted");
+    return reply(200, {ok: true});
+  }
+  if (request.method !== "POST") return reply(405, {ok: false});
+  if (!/^application\/json(?:;|$)/i.test(firstHeader(request.headers || {}, "Content-Type"))) return reply(415, {ok: false});
+  if (request.truncated || typeof request.body !== "string" || request.body.length > 65536) return reply(413, {ok: false});
+  // The host VM has no TextEncoder; count UTF-8 bytes before parsing JSON.
+  try {
+    if (encodeURIComponent(request.body).replace(/%[0-9A-F]{2}/g, "x").length > 65536) return reply(413, {ok: false});
+  } catch (error) { return reply(400, {ok: false}); }
+  try { return reply(200, handleWechatMessage(JSON.parse(request.body), api)); }
+  catch (error) { api.log("wechat: report rejected: invalid request data"); return reply(400, {ok: false}); }
 }
 
 function onObservation(observation, api) {
   var request = observation.request;
   var response = observation.response;
   var cacheVersion = api.pluginVersion + "-" + WECHAT_INJECTION_CACHE_REVISION;
+  var host = (request.host || "").toLowerCase().replace(/:\d+$/, "");
+  var path = request.path;
+
+  if (observation.stage === "request" && host === "channels.weixin.qq.com" && path === "/res-downloader/wechat") {
+    return handleWechatRequest(request, api);
+  }
 
   if (observation.stage !== "response" || !response || (response.statusCode !== 200 && response.statusCode !== 206 && response.statusCode !== 304)) {
     return {decision: "continue"};
   }
 
-  var host = (request.host || "").toLowerCase().replace(/:\d+$/, "");
-  var path = request.path;
   var contentType = (response.contentType || "").toLowerCase();
   var liveAlias = liveURLAlias(request.url);
   if (liveAlias) {

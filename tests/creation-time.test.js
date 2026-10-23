@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
+const {report} = require("./request-helper");
 
 const plugin = vm.createContext({});
 vm.runInContext(fs.readFileSync(path.join(__dirname, "../main.js"), "utf8"), plugin);
@@ -10,7 +11,7 @@ const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, "./fixtures/vide
 const envelope = fixture.steps[0].message;
 
 function observe(payload) {
-  const result = plugin.onPageMessage(payload, fixture.context, {pluginVersion: "1.0.3", log() {}});
+  const result = report(plugin, payload, {pluginVersion: "1.0.4", log() {}});
   return {...result, resources: result.resources || []};
 }
 

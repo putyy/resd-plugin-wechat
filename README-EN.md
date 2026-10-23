@@ -38,7 +38,7 @@ Once published, the plugin can be installed from Plugin Management in `res-downl
 
 ## Notes
 
-- Checks res-downloader once when the page initializes. A failed check skips reporting for that document without interrupting playback. Refresh pages after changing the plugin or host.
+- Checks res-downloader once when the player scripts load. A failed check skips reporting for that document without interrupting playback. Keep the proxy enabled during capture. Reopen Channels after updating the plugin; clear the WeChat browser cache if it still uses old scripts.
 - Homepage autoplay and hover previews are captured once they actually play. Image posts do not trigger video capture.
 - Live recording requires FFmpeg configured in the application settings. Use Stop and Save to finish recording. Replay and recapture a stream if its URL expires.
 - Home previews and detail views of the same live room merge into one resource, shown once its metadata is available.
@@ -56,13 +56,13 @@ node --test ./plugins/resd-plugin-wechat/tests/creation-time.test.js
 node --test ./plugins/resd-plugin-wechat/tests/injection-cache.test.js
 node --test ./plugins/resd-plugin-wechat/tests/playback.test.js
 node --test ./plugins/resd-plugin-wechat/tests/live.test.js
-node --test ./plugins/resd-plugin-wechat/tests/bridge.test.js
+node --test ./plugins/resd-plugin-wechat/tests/request.test.js
 go run main.go plugin pack ./plugins/resd-plugin-wechat
 ```
 
 Sanitized fixtures and tests cover video capture, live stream correlation, page injection, resource deduplication and invalid data handling.
 
-Development note: `fixtures/` contains response-hook CLI replay inputs. `tests/fixtures/` contains page-message contract cases covered by `tests/bridge.test.js` and `tests/live.test.js`.
+Development note: `fixtures/` contains request- and response-hook CLI replay inputs. `tests/fixtures/` contains resource-report contract cases covered by `tests/request.test.js` and `tests/live.test.js`.
 
 ## License
 
