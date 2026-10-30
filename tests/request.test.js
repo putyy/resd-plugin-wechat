@@ -8,7 +8,7 @@ const plugin = vm.createContext({});
 vm.runInContext(fs.readFileSync(path.join(__dirname, "../main.js"), "utf8"), plugin);
 const source = "(" + plugin.installWechatSender.toString() + ")()";
 const payload = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures/video.json"), "utf8")).steps[0].message;
-const hostAPI = {pluginVersion: "1.0.4", log() {}};
+const hostAPI = {pluginVersion: "1.0.5", log() {}};
 
 for (const name of fs.readdirSync(path.join(__dirname, "fixtures")).filter((name) => name.endsWith(".json"))) {
   test("request fixture: " + name, () => {

@@ -8,7 +8,7 @@ const samples = require("./component-samples");
 const source = fs.readFileSync(path.join(__dirname, "../main.js"), "utf8");
 const plugin = vm.createContext({});
 vm.runInContext(source, plugin);
-const api = {pluginVersion: "1.0.4", log() {}};
+const api = {pluginVersion: "1.0.5", log() {}};
 
 function feed(id = "example-one") {
   const media = {url: "https://finder.video.qq.com/example.mp4", decodeKey: "2136343393", spec: [{fileFormat: "hd"}]};
@@ -116,7 +116,8 @@ test("metadata access and detail APIs no longer get capture hooks", () => {
 test("default downloads preserve the player URL and quality overrides replace one parameter", () => {
   const observed = "https://finder.video.qq.com/example.mp4?token=example%2Bvalue&X-snsvideoflag=sd&web=1";
   const resource = {tracks: [{id: "video-primary", url: observed, extension: ".mp4"}],
-    metadata: {"wechat.fileFormats": ["hd", "sd"]}};
+    metadata: {"wechat.specs": [{fileFormat: "sd", width: 640, height: 360, bitRate: 500},
+      {fileFormat: "hd", width: 1920, height: 1080, bitRate: 2000}]}};
   const resolve = (quality) => plugin.createDownloadPlan({resource, options: {settings: {quality}}});
   assert.equal(resolve("default").inputs[0].url, observed);
   const high = resolve("high").inputs[0].url;

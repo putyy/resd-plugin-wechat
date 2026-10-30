@@ -12,7 +12,7 @@ const payload = fixture.steps[0].message;
 
 function api() {
   const refs = new Map();
-  return {pluginVersion: "1.0.4", log() {}, correlate: {
+  return {pluginVersion: "1.0.5", log() {}, correlate: {
     register(value) {
       for (const alias of value.aliases) {
         const entries = refs.get(alias) || [];

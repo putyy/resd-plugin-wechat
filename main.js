@@ -33,9 +33,14 @@ function creationTimeMilliseconds(value) {
   return value * 1000;
 }
 
+function captureMode(settings) {
+  var mode = settings && settings.captureMode;
+  return mode === "detail" || mode === "full" ? mode : "playback";
+}
+
 function mediaResources(payload, pageUrl, api) {
   var description = payload && typeof payload === "object" && !Array.isArray(payload) ? payload.objectDesc : null;
-  if (!payload || payload.event !== "playing" || typeof payload.feedId !== "string" ||
+  if (!payload || ["playing", "image-playing", "detail", "media"].indexOf(payload.event) < 0 || typeof payload.feedId !== "string" ||
       !/^[A-Za-z0-9_-]{1,128}$/.test(payload.feedId) ||
       !description || typeof description !== "object" || Array.isArray(description)) {
     api.log("wechat: resource rejected: invalid playback envelope");
@@ -43,41 +48,51 @@ function mediaResources(payload, pageUrl, api) {
   }
   var createdAt = creationTimeMilliseconds(payload.createtime);
   var media = description.media;
-  if (!Array.isArray(media) || media.length !== 1 || !media[0] || typeof media[0] !== "object" ||
-      Array.isArray(media[0]) || Number(media[0].mediaType) !== 4 ||
-      !isHTTPURL(media[0].url) || !isHTTPURL(payload.playbackUrl)) {
-    api.log("wechat: resource rejected: expected one playing video");
+  var playing = payload.event === "playing";
+  if (!Array.isArray(media) || !media.length || media.length > 128 ||
+      (playing && (media.length !== 1 || !isHTTPURL(payload.playbackUrl)))) {
+    api.log("wechat: resource rejected: invalid media list");
     return [];
   }
 
   var resources = [];
   for (var index = 0; index < media.length; index++) {
     var item = media[index] || {};
-    var rawUrl = payload.playbackUrl;
-    var formats = [];
-    if (Array.isArray(item.spec)) {
-      for (var specIndex = 0; specIndex < Math.min(item.spec.length, 64); specIndex++) {
-        var format = item.spec[specIndex] && item.spec[specIndex].fileFormat;
-        if (typeof format === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(format)) formats.push(format);
-      }
-    }
-
-    var metadata = {"wechat.fileFormats": formats, "wechat.feedId": payload.feedId};
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    var isImage = Number(item.mediaType) === 9 || Number(description.mediaType) === 9;
+    if ((playing && (isImage || !isHTTPURL(item.url))) || (payload.event === "image-playing" && !isImage) ||
+        (!isImage && Number(item.mediaType) !== 4 && Number(description.mediaType) !== 4)) continue;
+    var rawUrl = playing ? payload.playbackUrl :
+      (typeof item.url === "string" ? item.url + (typeof item.urlToken === "string" ? item.urlToken : "") : "");
+    if (!isHTTPURL(rawUrl)) continue;
+    var specs = normalizeWechatSpecs(item.spec);
+    var metadata = {"wechat.fileFormats": specs.map(function (spec) { return spec.fileFormat; }),
+      "wechat.specs": specs, "wechat.feedId": payload.feedId};
     if (createdAt) metadata.createdAt = createdAt;
     var processors = [];
-    if (item.decodeKey && (typeof item.decodeKey !== "string" || !/^\d{1,20}$/.test(item.decodeKey))) {
+    if (!isImage && item.decodeKey && (typeof item.decodeKey !== "string" || !/^\d{1,20}$/.test(item.decodeKey))) {
       api.log("wechat: resource rejected: invalid decode key");
       return [];
     }
-    if (typeof item.decodeKey === "string" && /^\d{1,20}$/.test(item.decodeKey)) {
+    if (!isImage && typeof item.decodeKey === "string" && /^\d{1,20}$/.test(item.decodeKey)) {
       processors.push({
         type: "plugin-wasm",
         options: {processor: "isaac64-prefix", seed: item.decodeKey}
       });
     }
 
-    var trackId = "video-primary";
-    var groupKey = "wechat:video:feed:" + payload.feedId;
+    var trackId = isImage ? "image-primary" : "video-primary";
+    var groupKey = isImage ? "wechat:image:feed:" + payload.feedId + ":" + index : "wechat:video:feed:" + payload.feedId;
+    var extension = isImage ? ".jpg" : ".mp4";
+    var mime = isImage ? "image/jpeg" : "video/mp4";
+    if (isImage) {
+      var imageFormat = /\.(png|webp|gif|jpe?g)(?:[?#]|$)/i.exec(rawUrl);
+      if (imageFormat) {
+        var format = imageFormat[1].toLowerCase().replace("jpeg", "jpg");
+        extension = "." + format;
+        mime = "image/" + (format === "jpg" ? "jpeg" : format);
+      }
+    }
     var actions = [];
     if (processors.length) {
       actions.push({
@@ -91,22 +106,22 @@ function mediaResources(payload, pageUrl, api) {
       groupKey: groupKey,
       title: typeof description.description === "string" ? description.description.slice(0, 4096) : "",
       coverUrl: isHTTPURL(item.coverUrl) ? item.coverUrl : "",
-      kind: "media.video",
+      kind: isImage ? "media.image" : "media.video",
       tracks: [{
         id: trackId,
-        role: "video",
+        role: isImage ? "image" : "video",
         url: rawUrl,
-        mime: "video/mp4",
-        extension: ".mp4",
+        mime: mime,
+        extension: extension,
         size: size,
         processors: processors
       }],
-      requiredTracks: ["video"],
+      requiredTracks: [isImage ? "image" : "video"],
       capabilities: ["download", "preview", "open", "copy"],
       preview: {
-        renderer: "video",
+        renderer: isImage ? "image" : "video",
         mode: "range-proxy",
-        mime: "video/mp4",
+        mime: mime,
         trackId: trackId
       },
       metadata: metadata,
@@ -420,8 +435,10 @@ function wechatPlaybackPageBridge() {
         mediaType: 4, url: media.url, urlToken: media.urlToken || "",
         decodeKey: media.decodeKey || "", fileSize: raw.url === media.url ? raw.fileSize || 0 : 0,
         coverUrl: media.fullCoverUrl || media.coverUrl || media.fullThumbUrl || media.thumbUrl || "",
-        spec: (Array.isArray(media.spec) ? media.spec : []).slice(0, 64).map(function (spec) {
-          return {fileFormat: spec && spec.fileFormat};
+        spec: (Array.isArray(media.spec) ? media.spec : []).slice(0, 64).concat(
+          media.hdrSpec && Array.isArray(media.hdrSpec.hdrList) ? media.hdrSpec.hdrList.slice(0, 64) : []).map(function (spec) {
+          return spec && {fileFormat: spec.fileFormat, width: spec.width, height: spec.height,
+            bitRate: spec.bitRate, codingFormat: spec.codingFormat, dynamicRangeType: spec.dynamicRangeType};
         })
       };
       var payload = {
@@ -516,10 +533,100 @@ function injectWechatHooks(body, target, api) {
   return marker + "\n(" + installWechatSender.toString() + ")();\n(" + wechatPlaybackPageBridge.toString() + ")();\n" + body.slice(0, start) + changed + body.slice(end);
 }
 
+// Shared by the model getter, detail response and image player. Read raw
+// objectDesc only: accessing feed.media here would re-enter the getter hook.
+function wechatObjectPageBridge() {
+  if (window.__resdWechatObjects) return;
+  var sent = new Map();
+  function report(feed, event) {
+    try {
+      var description = feed && feed.objectDesc;
+      var feedId = String(feed && feed.id || "");
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(feedId) || !description ||
+          !Array.isArray(description.media) || !description.media.length || description.media.length > 128) return;
+      if (!description.media.some(function (item) {
+        var type = Number(item && item.mediaType || description.mediaType);
+        return item && (type === 4 || type === 9) && typeof item.url === "string" && /^https?:\/\//i.test(item.url);
+      })) return;
+      var payload = {event: event, feedId: feedId, pageUrl: location.href, createtime: feed.createtime,
+        objectDesc: {description: String(description.description || "").slice(0, 4096),
+          mediaType: description.mediaType,
+          media: description.media.map(function (item) {
+            item = item || {};
+            return {mediaType: item.mediaType || description.mediaType, url: item.url, urlToken: item.urlToken,
+              decodeKey: item.decodeKey, fileSize: item.fileSize,
+              coverUrl: item.fullCoverUrl || item.coverUrl || item.fullThumbUrl || item.thumbUrl,
+              spec: (Array.isArray(item.spec) ? item.spec : []).slice(0, 64).concat(
+                item.hdrSpec && Array.isArray(item.hdrSpec.hdrList) ? item.hdrSpec.hdrList.slice(0, 64) : []).map(function (spec) {
+                return spec && {fileFormat: spec.fileFormat, width: spec.width, height: spec.height,
+                  bitRate: spec.bitRate, codingFormat: spec.codingFormat, dynamicRangeType: spec.dynamicRangeType};
+              })};
+          })}};
+      var body = JSON.stringify(payload), key = event + ":" + feedId;
+      if (body.length > 65536 || sent.get(key) === body) return;
+      var sender = window.__resdWechatSender;
+      if (!sender) return;
+      sent.delete(key);
+      sent.set(key, body);
+      while (sent.size > 256) sent.delete(sent.keys().next().value);
+      sender.send(payload).then(function (result) {
+        if (!result.ok && sent.get(key) === body) sent.delete(key);
+      }).catch(function () { if (sent.get(key) === body) sent.delete(key); });
+    } catch (error) { /* Capture must not interrupt the site's getter or player. */ }
+  }
+  window.__resdWechatObjects = {report: report};
+}
+
+function objectBridgeSource() {
+  return "\n(" + installWechatSender.toString() + ")();\n(" + wechatObjectPageBridge.toString() + ")();\n";
+}
+
+function injectWechatObjectHooks(body, mode, api) {
+  var marker = "/* resd-wechat-objects */";
+  if (body.indexOf(marker) >= 0) return body;
+  var next = body;
+  if (mode === "full") {
+    next = next.replace(/get\s*media\(\)\{/g,
+      'get media(){window.__resdWechatObjects.report(this,"media");');
+    api.log("wechat: media getter hook " + (next !== body ? "installed" : "did not match"));
+  }
+  var changed = next.replace(/async\s*finderGetCommentDetail\((\w+)\)\s*\{return(.*?)\s*}\s*async/g,
+    function (_, argument, expression) {
+      return "async finderGetCommentDetail(" + argument + "){var resdDetail=await " + expression +
+        ';if(resdDetail&&resdDetail.data&&resdDetail.data.object){window.__resdWechatObjects.report(resdDetail.data.object,"detail");}' +
+        "return resdDetail;}async";
+    });
+  api.log("wechat: detail hook " + (changed !== next ? "installed" : "did not match"));
+  return changed === body ? body : marker + objectBridgeSource() + changed;
+}
+
+function injectWechatImageHook(body, api) {
+  var marker = "/* resd-wechat-image-playing */";
+  if (body.indexOf(marker) >= 0) return body;
+  var start = body.indexOf('__name:"ImagePlayer"');
+  if (start < 0) { api.log("wechat: image player did not match"); return body; }
+  var end = body.indexOf('__name:"', start + 8);
+  if (end < 0) end = body.length;
+  var section = body.slice(start, end);
+  var setup = /setup\(([$\w]+),\{expose:[$\w]+,emit:([$\w]+)\}\)\{/.exec(section);
+  var changed = section;
+  if (setup) {
+    var emitAlias = new RegExp("\\b([$\\w]+)=" + setup[2].replace(/\$/g, "\\$") + "[,;]").exec(section);
+    if (emitAlias) {
+      var play = emitAlias[1] + '("play")';
+      changed = section.replace(play, '(' + setup[1] + '.active&&window.__resdWechatObjects.report(' +
+        setup[1] + '.feed,"image-playing"),' + play + ')');
+    }
+  }
+  if (changed === section) { api.log("wechat: image play hook did not match"); return body; }
+  api.log("wechat: image play hook installed");
+  return marker + objectBridgeSource() + body.slice(0, start) + changed + body.slice(end);
+}
+
 function playbackReport(payload, pageUrl, api) {
   var resources = mediaResources(payload, pageUrl, api);
   if (api.correlate) resources.forEach(function (resource) {
-    api.correlate.register({groupKey: resource.groupKey, trackId: "video-primary", role: "video", aliases: [resource.tracks[0].url]});
+    api.correlate.register({groupKey: resource.groupKey, trackId: resource.tracks[0].id, role: resource.tracks[0].role, aliases: [resource.tracks[0].url]});
   });
   return resources;
 }
@@ -535,13 +642,19 @@ function liveReport(payload, type, api) {
   return {ok: !!accepted, data: {observed: !!observed}, resources: observed ? [liveResource(live)] : []};
 }
 
-function handleWechatMessage(message, api) {
+function handleWechatMessage(message, api, settings) {
   if (!message || typeof message !== "object" || Array.isArray(message) ||
       !isHTTPURL(message.pageUrl) || !/^https:\/\/channels\.weixin\.qq\.com(?::443)?\//i.test(message.pageUrl)) return {ok: false};
   var body = JSON.stringify(message);
   if (body.length > 65536) return {ok: false};
   if (message.event === "live-ready" || message.event === "live-stream") return liveReport(message, message.event, api);
-  if (message.event === "playing") {
+  if (["playing", "image-playing", "detail", "media"].indexOf(message.event) >= 0) {
+    var mode = captureMode(settings);
+    var allowed = mode === "full" || (mode === "detail" ? message.event === "detail" :
+      message.event === "playing" || message.event === "image-playing");
+    // A cached page may still send events from the previous mode. Ignore them
+    // successfully so the shared sender remains available for live streams.
+    if (!allowed) return {ok: true, resources: []};
     var resources = playbackReport(message, message.pageUrl, api);
     if (resources.length) api.log("wechat: playback report accepted");
     return {ok: resources.length > 0, resources: resources};
@@ -549,7 +662,7 @@ function handleWechatMessage(message, api) {
   return {ok: false};
 }
 
-function handleWechatRequest(request, api) {
+function handleWechatRequest(request, api, settings) {
   function reply(status, result) {
     return {decision: "stop", handled: true, resources: result.resources || [], syntheticResponse: {
       statusCode: status, headers: {"Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store",
@@ -570,19 +683,20 @@ function handleWechatRequest(request, api) {
   try {
     if (encodeURIComponent(request.body).replace(/%[0-9A-F]{2}/g, "x").length > 65536) return reply(413, {ok: false});
   } catch (error) { return reply(400, {ok: false}); }
-  try { return reply(200, handleWechatMessage(JSON.parse(request.body), api)); }
+  try { return reply(200, handleWechatMessage(JSON.parse(request.body), api, settings)); }
   catch (error) { api.log("wechat: report rejected: invalid request data"); return reply(400, {ok: false}); }
 }
 
 function onObservation(observation, api) {
   var request = observation.request;
   var response = observation.response;
-  var cacheVersion = api.pluginVersion + "-" + WECHAT_INJECTION_CACHE_REVISION;
+  var mode = captureMode(observation.settings);
+  var cacheVersion = api.pluginVersion + "-" + WECHAT_INJECTION_CACHE_REVISION + "-" + mode;
   var host = (request.host || "").toLowerCase().replace(/:\d+$/, "");
   var path = request.path;
 
   if (observation.stage === "request" && host === "channels.weixin.qq.com" && path === "/res-downloader/wechat") {
-    return handleWechatRequest(request, api);
+    return handleWechatRequest(request, api, observation.settings);
   }
 
   if (observation.stage !== "response" || !response || (response.statusCode !== 200 && response.statusCode !== 206 && response.statusCode !== 304)) {
@@ -646,10 +760,20 @@ function onObservation(observation, api) {
     }
     var target = path.indexOf("/FinderHome.publish") >= 0 ? "main" :
       path.indexOf("/AuthorObjectCard.vue_vue_type_style_index_1_lang.publish") >= 0 ? "preview" : "";
-    if (target && !response.truncated) {
+    if (target && mode !== "detail" && !response.truncated) {
       var injected = injectWechatHooks(body, target, api);
       changed = changed || injected !== body;
       body = injected;
+    }
+    if (target === "main" && mode !== "detail") {
+      var imageInjected = injectWechatImageHook(body, api);
+      changed = changed || imageInjected !== body;
+      body = imageInjected;
+    }
+    if (mode !== "playback" && path.indexOf("/virtual_svg-icons-register.publish") >= 0) {
+      var objectInjected = injectWechatObjectHooks(body, mode, api);
+      changed = changed || objectInjected !== body;
+      body = objectInjected;
     }
     var liveTarget = path.indexOf("/useViewportProbe.publish") >= 0 ? "live" :
       path.indexOf("/LiveStatBox.publish") >= 0 ? "live-preview" : "";
@@ -663,6 +787,24 @@ function onObservation(observation, api) {
   return changed ? {decision: "continue", patch: {body: body}} : {decision: "continue"};
 }
 
+function normalizeWechatSpecs(values) {
+  if (!Array.isArray(values)) return [];
+  var seen = {}, result = [];
+  function positive(value) {
+    var number = Number(value);
+    return isFinite(number) && number > 0 && number <= 9007199254740991 ? number : 0;
+  }
+  values.slice(0, 128).forEach(function (spec) {
+    if (!spec || typeof spec.fileFormat !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(spec.fileFormat) ||
+        spec.fileFormat === "xV0" || seen["spec:" + spec.fileFormat]) return;
+    seen["spec:" + spec.fileFormat] = true;
+    result.push({fileFormat: spec.fileFormat, width: positive(spec.width), height: positive(spec.height),
+      bitRate: positive(spec.bitRate), codingFormat: spec.codingFormat === "h265" ? "h265" :
+        spec.codingFormat === "h264" ? "h264" : "", dynamicRangeType: positive(spec.dynamicRangeType)});
+  });
+  return result;
+}
+
 function createDownloadPlan(input) {
   var resource = input.resource;
   var options = input.options || {};
@@ -673,23 +815,21 @@ function createDownloadPlan(input) {
       output: {input: liveTrack.id, extension: liveTrack.extension || ".flv"}};
   }
   var settings = options.settings || {};
-  var qualityModes = {"default": 0, "ultra": 1, "high": 2, "medium": 3, "low": 4};
-  var quality = qualityModes[settings.quality] || 0;
+  var qualityModes = {"default": 0, "high": 1, "medium": 2, "low": 3};
+  var quality = resource.kind === "media.image" ? 0 : qualityModes[settings.quality] || 0;
   var primaryTrack = resource.tracks && resource.tracks.length ? resource.tracks[0] : {};
   var rawUrl = primaryTrack.url;
   var metadata = resource.metadata || {};
-  var formats = metadata["wechat.fileFormats"] || [];
+  var specs = normalizeWechatSpecs(metadata["wechat.specs"]);
 
-  if (quality === 1 && rawUrl.indexOf("encfilekey=") >= 0 && rawUrl.indexOf("token=") >= 0) {
-    var encfilekey = queryValue(rawUrl, "encfilekey");
-    var token = queryValue(rawUrl, "token");
-    rawUrl = rawUrl.split("?")[0] + "?encfilekey=" + encodeURIComponent(encfilekey) + "&token=" + encodeURIComponent(token);
-  } else if (quality > 1 && formats.length) {
-    var choices = [formats[0], formats[Math.floor(formats.length / 2)], formats[formats.length - 1]];
-    var choiceIndex = quality - 2;
-    if (choiceIndex >= 0 && choiceIndex < choices.length) {
-      rawUrl = setQueryValue(rawUrl, "X-snsvideoflag", choices[choiceIndex]);
-    }
+  if (quality > 0 && specs.length) {
+    specs.sort(function (a, b) {
+      var pixelsA = a.width * a.height, pixelsB = b.width * b.height;
+      if (pixelsA !== pixelsB) return pixelsB - pixelsA;
+      return b.bitRate - a.bitRate;
+    });
+    var choices = [specs[0], specs[Math.floor(specs.length / 2)], specs[specs.length - 1]];
+    rawUrl = setQueryValue(rawUrl, "X-snsvideoflag", choices[quality - 1].fileFormat);
   }
 
   return {

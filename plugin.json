@@ -19,7 +19,7 @@
       "description": "Captures WeChat Channels resources and processes encrypted media with plugin-bundled WASM."
     }
   },
-  "version": "1.0.4",
+  "version": "1.0.5",
   "apiVersion": 1,
   "runtime": "javascript",
   "entry": "main.js",
@@ -107,6 +107,12 @@
       "host": "pull-m1.wxlivecdn.com",
       "url": "*.flv*",
       "readBody": false
+    },
+    {
+      "stage": "response",
+      "host": "res.wx.qq.com",
+      "path": "*web/web-finder/res/js/virtual_svg-icons-register.publish*.js",
+      "readBody": true
     }
   ],
   "resourceKinds": [
@@ -126,6 +132,15 @@
       "locales": {
         "zh": {"name": "直播"},
         "en": {"name": "Live stream"}
+      }
+    },
+    {
+      "id": "media.image",
+      "icon": "image",
+      "color": "#18a058",
+      "locales": {
+        "zh": {"name": "图片"},
+        "en": {"name": "Image"}
       }
     }
   ],
@@ -157,23 +172,9 @@
   "settingsSchema": {
     "type": "object",
     "properties": {
-      "enableLog": {
-        "type": "boolean",
-        "default": false,
-        "x-locales": {
-          "zh": {
-            "name": "启用日志",
-            "description": "记录播放器注入、探测和数据校验结果，默认关闭。"
-          },
-          "en": {
-            "name": "Enable logging",
-            "description": "Log player injection, probe and data validation results. Disabled by default."
-          }
-        }
-      },
       "quality": {
         "type": "string",
-        "enum": ["default", "ultra", "high", "medium", "low"],
+        "enum": ["default", "high", "medium", "low"],
         "default": "default",
         "x-locales": {
           "zh": {
@@ -188,17 +189,56 @@
         "x-enumLabels": {
           "zh": {
             "default": "默认",
-            "ultra": "超清",
             "high": "高清",
             "medium": "中等",
             "low": "低清"
           },
           "en": {
             "default": "Default",
-            "ultra": "Ultra",
             "high": "High",
             "medium": "Medium",
             "low": "Low"
+          }
+        }
+      },
+      "captureMode": {
+        "type": "string",
+        "enum": ["playback", "detail", "full"],
+        "default": "playback",
+        "x-locales": {
+          "zh": {
+            "name": "抓取模式",
+            "description": "播放抓取在视频或图文开始播放时抓取；详情抓取在取得详情时抓取；完整抓取合并页面媒体、详情和播放。直播不受此设置影响。切换后请重新打开视频号。"
+          },
+          "en": {
+            "name": "Capture mode",
+            "description": "Capture on video or image-post playback, on detail responses, or from all page media, details and playback. Live capture is independent. Reopen Channels after switching."
+          }
+        },
+        "x-enumLabels": {
+          "zh": {
+            "playback": "播放抓取",
+            "detail": "详情抓取",
+            "full": "完整抓取"
+          },
+          "en": {
+            "playback": "Playback capture",
+            "detail": "Detail capture",
+            "full": "Full capture"
+          }
+        }
+      },
+      "enableLog": {
+        "type": "boolean",
+        "default": false,
+        "x-locales": {
+          "zh": {
+            "name": "启用日志",
+            "description": "记录播放器注入、探测和数据校验结果，默认关闭。"
+          },
+          "en": {
+            "name": "Enable logging",
+            "description": "Log player injection, probe and data validation results. Disabled by default."
           }
         }
       }

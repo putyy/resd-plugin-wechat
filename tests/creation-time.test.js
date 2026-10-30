@@ -11,7 +11,7 @@ const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, "./fixtures/vide
 const envelope = fixture.steps[0].message;
 
 function observe(payload) {
-  const result = report(plugin, payload, {pluginVersion: "1.0.4", log() {}});
+  const result = report(plugin, payload, {pluginVersion: "1.0.5", log() {}});
   return {...result, resources: result.resources || []};
 }
 

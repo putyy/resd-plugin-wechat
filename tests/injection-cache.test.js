@@ -31,7 +31,7 @@ test("page and dependency scripts share a cache key across releases and revision
 
   for (const scenario of scenarios) {
     plugin.WECHAT_INJECTION_CACHE_REVISION = scenario.revision;
-    const expectedKey = scenario.version + "-" + scenario.revision;
+    const expectedKey = scenario.version + "-" + scenario.revision + "-playback";
     cacheKeys.add(expectedKey);
     for (const page of ["feed", "home", "profile", "search", "live"]) {
       for (const enableLog of [false, true]) {
