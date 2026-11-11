@@ -19,7 +19,7 @@
       "description": "Captures WeChat Channels resources and processes encrypted media with plugin-bundled WASM."
     }
   },
-  "version": "1.0.5",
+  "version": "1.0.6",
   "apiVersion": 1,
   "runtime": "javascript",
   "entry": "main.js",
