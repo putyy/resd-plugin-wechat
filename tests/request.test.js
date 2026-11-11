@@ -138,7 +138,6 @@ test("the plugin intercepts probes and reports and preserves the full page URL",
   assert.equal(result.ok, true);
   assert.equal(result.resources[0].source.pageUrl, value.pageUrl);
   const invalidCases = [
-    [{headers: {Origin: ["https://example.com"], "Content-Type": ["application/json"]}}, 403],
     [{headers: {"Content-Type": ["text/plain"]}}, 415],
     [{method: "DELETE"}, 405], [{truncated: true}, 413],
     [{body: "x".repeat(65537)}, 413], [{body: JSON.stringify({padding: "字".repeat(30000)})}, 413],
@@ -150,11 +149,22 @@ test("the plugin intercepts probes and reports and preserves the full page URL",
     assert.equal(rejected.statusCode, status);
     assert.equal(rejected.resources.length, 0);
   }
-  for (const invalid of [null, [], {event: "unknown"}, {...value, pageUrl: "https://example.com/watch"}]) {
+  for (const invalid of [null, [], {event: "unknown"}, {...value, pageUrl: "not-a-url"}]) {
     assert.equal(report(plugin, invalid, hostAPI).ok, false);
   }
   const unrelated = plugin.onObservation({stage: "request", request: {method: "POST", url: "https://example.com/res-downloader/wechat",
     host: "example.com", path: "/res-downloader/wechat", headers: {}}}, hostAPI);
   assert.equal(unrelated.decision, "continue");
   assert.equal(unrelated.syntheticResponse, undefined);
+});
+
+test("report acceptance depends on structure rather than Origin or page URL host", () => {
+  for (const origin of [undefined, "null", "https://example.com", "https://example.org"]) {
+    const headers = {"Content-Type": ["application/json"]};
+    if (origin !== undefined) headers.Origin = [origin];
+    const value = {...payload, pageUrl: "https://example.com/source?sample=1#view"};
+    const result = report(plugin, value, hostAPI, {headers});
+    assert.equal(result.ok, true);
+    assert.equal(result.resources[0].source.pageUrl, value.pageUrl);
+  }
 });

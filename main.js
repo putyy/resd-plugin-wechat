@@ -126,7 +126,7 @@ function mediaResources(payload, pageUrl, api) {
       },
       metadata: metadata,
       actions: actions,
-      source: {pageUrl: isHTTPURL(payload.pageUrl) && /^https:\/\/channels\.weixin\.qq\.com(?::443)?\//.test(payload.pageUrl) ? payload.pageUrl : pageUrl}
+      source: {pageUrl: isHTTPURL(payload.pageUrl) ? payload.pageUrl : pageUrl}
     });
   }
   return resources;
@@ -226,8 +226,7 @@ function livePayload(payload, event, api) {
       typeof payload.loadId !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(payload.loadId) ||
       typeof payload.active !== "boolean" ||
       !liveURLAlias(payload.playbackUrl) ||
-      typeof payload.pageUrl !== "string" || payload.pageUrl.length > 32768 ||
-      !/^https:\/\/channels\.weixin\.qq\.com(?::443)?\//.test(payload.pageUrl) ||
+      !isHTTPURL(payload.pageUrl) ||
       typeof payload.title !== "string" || payload.title.length > 4096 ||
       typeof payload.author !== "string" || payload.author.length > 512 ||
       typeof payload.coverUrl !== "string" || payload.coverUrl.length > 32768) {
@@ -644,7 +643,7 @@ function liveReport(payload, type, api) {
 
 function handleWechatMessage(message, api, settings) {
   if (!message || typeof message !== "object" || Array.isArray(message) ||
-      !isHTTPURL(message.pageUrl) || !/^https:\/\/channels\.weixin\.qq\.com(?::443)?\//i.test(message.pageUrl)) return {ok: false};
+      !isHTTPURL(message.pageUrl)) return {ok: false};
   var body = JSON.stringify(message);
   if (body.length > 65536) return {ok: false};
   if (message.event === "live-ready" || message.event === "live-stream") return liveReport(message, message.event, api);
@@ -654,10 +653,10 @@ function handleWechatMessage(message, api, settings) {
       message.event === "playing" || message.event === "image-playing");
     // A cached page may still send events from the previous mode. Ignore them
     // successfully so the shared sender remains available for live streams.
-    if (!allowed) return {ok: true, resources: []};
+    if (!allowed) return {ok: true, resources: [], data: {ignored: true, captureMode: mode}};
     var resources = playbackReport(message, message.pageUrl, api);
     if (resources.length) api.log("wechat: playback report accepted");
-    return {ok: resources.length > 0, resources: resources};
+    return {ok: resources.length > 0, resources: resources, data: {captureMode: mode, resourceCount: resources.length}};
   }
   return {ok: false};
 }
@@ -670,11 +669,9 @@ function handleWechatRequest(request, api, settings) {
       body: JSON.stringify({ok: result.ok === true, plugin: "official.wechat", data: result.data})
     }};
   }
-  var origin = firstHeader(request.headers || {}, "Origin");
-  if (origin && !/^https:\/\/channels\.weixin\.qq\.com(?::443)?$/i.test(origin)) return reply(403, {ok: false});
   if (request.method === "GET" && queryValue(request.url, "type") === "probe") {
     api.log("wechat: sender probe accepted");
-    return reply(200, {ok: true});
+    return reply(200, {ok: true, data: {captureMode: captureMode(settings), reportVersion: 1}});
   }
   if (request.method !== "POST") return reply(405, {ok: false});
   if (!/^application\/json(?:;|$)/i.test(firstHeader(request.headers || {}, "Content-Type"))) return reply(415, {ok: false});

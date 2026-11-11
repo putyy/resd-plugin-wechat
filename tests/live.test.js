@@ -85,11 +85,11 @@ test("invalid report data keeps generic fallback", () => {
   for (const value of [{...payload, roomId: ""}, {...payload, loadId: ""}, {...payload, active: "true"},
     {...payload, playbackUrl: "https://example.com/sample.flv"},
     {...payload, playbackUrl: "https://user@host.qq.com/sample.flv"},
-    {...payload, pageUrl: "https://example.com/live"}]) {
+    {...payload, pageUrl: "not-a-url"}]) {
     assert.equal(bridge("live-ready", value, hostAPI).ok, false);
   }
-  assert.equal(report(plugin, payload, hostAPI, {headers: {Origin: ["https://example.com"],
-    "Content-Type": ["application/json"]}}).ok, false);
+  assert.equal(report(plugin, {...payload, pageUrl: "https://example.com/live"}, api(),
+    {headers: {Origin: ["https://example.com"], "Content-Type": ["application/json"]}}).ok, true);
   assert.equal(media(payload.playbackUrl, hostAPI).handled, false);
 });
 
